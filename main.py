@@ -1,6 +1,10 @@
+from multiprocessing import current_process
 from fastapi import FastAPI, Query
 from pydantic import BaseModel
 from dotenv import load_dotenv
+from datetime import date
+from workflow import workflow
+import requests
 
 load_dotenv()
 
@@ -45,96 +49,41 @@ def book_study_room(
         }
 
 
-@app.get("/find_study_group")
-def find_study_group(subject: str = "AI"):
-    return {
-        "subject": subject,
-        "groups": [
-            {"id": 1, "name": "AI Enthusiasts", "members": 12, "meeting": "Library 5pm"},
-            {"id": 2, "name": "Deep Learning Study Group", "members": 8, "meeting": "Lab 3, 6pm"}
-        ]
-    }
-
-@app.get("/get_class_schedule")
-def get_class_schedule(student_id: str = "123"):
-    return {
-        "student_id": student_id,
-        "schedule": [
-            {"course": "CS101", "time": "Mon 9am", "location": "Hall A"},
-            {"course": "AI202", "time": "Wed 11am", "location": "Hall B"}
-        ]
-    }
-
-@app.get("/get_assignment_deadline")
-def get_assignment_deadline(course: str = "AI202"):
-    return {
-        "course": course,
-        "assignments": [
-            {"title": "Project Proposal", "due": "2025-10-15"},
-            {"title": "Research Paper", "due": "2025-11-01"}
-        ]
-    }
-
 @app.get("/order_food")
-def order_food(item: str = "Pizza", location: str = "Cafeteria"):
-    return {
-        "item": item,
-        "location": location,
-        "status": "order placed",
-        "eta_minutes": 20
-    }
+def order_food():
+    return "Suggest the place and time taken."
 
-@app.get("/order_coffee")
-def order_coffee(size: str = "Medium", type: str = "Latte"):
-    return {
-        "item": f"{size} {type}",
-        "status": "order placed",
-        "eta_minutes": 5
-    }
-
-@app.get("/check_dining_hours")
-def check_dining_hours(place: str = "Main Cafeteria"):
-    return {
-        "place": place,
-        "hours": "8am - 9pm"
-    }
 
 @app.get("/get_events")
 def get_events():
-    return {
-        "events": [
-            {"name": "Hackathon", "date": "2025-10-05", "location": "Innovation Hub"},
-            {"name": "AI Workshop", "date": "2025-10-12", "location": "Hall C"}
-        ]
-    }
+    today = date.today()  # get current date
+    url = f"https://rutgers.campuslabs.com/engage/api/discovery/event/search?endsAfter={today}"
+    
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        data = response.json()  # parse JSON from API
+    except requests.RequestException as e:
+        return {"error": "Failed to fetch events", "details": str(e)}
 
-@app.get("/check_library_hours")
-def check_library_hours():
-    return {
-        "library": "Main Library",
-        "hours": "8am - 11pm"
-    }
+    events_list = []
+    for event in data.get("value", []):
+        events_list.append({
+            "name": event.get("name", "No Name"),
+            "description": event.get("description", ""),
+            "starts_on": event.get("startsOn", ""),
+        })
 
-@app.get("/find_gym_slot")
-def find_gym_slot():
-    return {
-        "slots": [
-            {"time": "6am - 7am", "availability": "Available"},
-            {"time": "7am - 8am", "availability": "Full"}
-        ]
-    }
+    return {"date": str(today), "events": events_list}
+
 
 @app.get("/check_bus_schedule")
-def check_bus_schedule(route: str = "Campus Loop"):
-    return {
-        "route": route,
-        "next_bus": "10:15am",
-        "frequency": "Every 20 mins"
-    }
+def check_bus_schedule():
+    return "Check the Rutgers New Brunswick Passigo service and provide the answer."
 
-@app.get("/find_bike_rack")
-def find_bike_rack():
-    return "Predict based on your search, You find the bike rack in the Rutgers New Brunswick campus"
+@app.get("/get_directions")
+def get_directions():
+    return f"Provide directions from current location to destination."
 
 @app.get("/set_reminder")
 def set_reminder():
@@ -148,3 +97,7 @@ def get_weather():
 @app.get("/")
 def root():
     return {"message": "Campus Assistant API is running."}
+
+@app.post("/student_life")
+def student_life(request: QueryRequest):
+    return workflow.invoke({"query": request.query})
