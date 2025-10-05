@@ -10,7 +10,7 @@ load_dotenv()
 model = ChatGoogleGenerativeAI(model="gemini-2.5-pro")
 
 class ClassesSchema(BaseModel):
-    classes: list[str] = Field(..., description="Category of the query from the following - book_study_room, order_food, get_events, find_campus_service, reserve_parking, check_bus_schedule, find_bike_rack, set_reminder, get_weather")
+    classes: list[str] = Field(..., description="Category of the query from the following - check_library_hours, order_food, get_events, check_bus_schedule, get_directions, set_reminder, get_weather")
 
 
 structured_model = model.with_structured_output(ClassesSchema)

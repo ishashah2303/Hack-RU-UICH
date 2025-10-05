@@ -1,19 +1,85 @@
-from multiprocessing import current_process
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, UploadFile, File
+from fastapi.responses import StreamingResponse, JSONResponse
 from pydantic import BaseModel
 from dotenv import load_dotenv
 from datetime import date
 from workflow import workflow
 import requests
+import os
+import io
 
 load_dotenv()
 
 app = FastAPI()
 
+ELEVEN_API_KEY = os.getenv("ELEVEN_API_KEY")
 
 # --- Models ---
 class QueryRequest(BaseModel):
     query: str
+
+@app.post("/text_to_speech")
+def text_to_speech(request: QueryRequest, voice_id: str = "21m00Tcm4TlvDq8ikWAM"):
+    """Convert text to speech using ElevenLabs TTS."""
+    url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
+    headers = {
+        "Accept": "audio/mpeg",
+        "Content-Type": "application/json",
+        "xi-api-key": ELEVEN_API_KEY
+    }
+    payload = {
+        "text": request.query,
+        "voice_settings": {
+            "stability": 0.5,
+            "similarity_boost": 0.7
+        }
+    }
+
+    try:
+        response = requests.post(url, headers=headers, json=payload, stream=True)
+        response.raise_for_status()
+        return StreamingResponse(io.BytesIO(response.content), media_type="audio/mpeg")
+    except requests.RequestException as e:
+        return JSONResponse(content={"error": "Text-to-speech failed", "details": str(e)})
+
+@app.get("/text_to_speech")
+def text_to_speech_get(query: str, voice: str = "21m00Tcm4TlvDq8ikWAM"):
+    return text_to_speech(QueryRequest(query=query), voice)
+
+
+@app.post("/speech_to_text")
+async def speech_to_text(
+    file: UploadFile = File(...),
+    model_id: str = "scribe_v1",
+    language_code: str | None = None,
+    tag_audio_events: bool = True,
+    diarize: bool = False
+):
+    url = "https://api.elevenlabs.io/v1/speech-to-text"
+    headers = {
+        "xi-api-key": ELEVEN_API_KEY
+    }
+
+    try:
+        audio_bytes = await file.read()
+        files = {
+            "file": (file.filename, audio_bytes, file.content_type or "application/octet-stream")
+        }
+        data = {
+            "model_id": model_id,
+            # Only include optional fields if provided
+            "tag_audio_events": tag_audio_events,
+            "diarize": diarize,
+        }
+        if language_code:
+            data["language_code"] = language_code
+
+        response = requests.post(url, headers=headers, files=files, data=data)
+        response.raise_for_status()
+        return response.json()
+    except requests.RequestException as e:
+        return JSONResponse(content={"error": "Speech-to-text failed", "details": str(e)})
+
 
 
 available_rooms = {
@@ -22,31 +88,32 @@ available_rooms = {
     "C303": ["1pm-3pm", "4pm-6pm"]
 }
 
-@app.get("/book_study_room")
-def book_study_room(
-    room_id: str = Query(..., description="Room ID like A101, B202, C303"),
-    time: str = Query(..., description="Requested time slot, e.g., 2pm-4pm")
-):
-    if room_id not in available_rooms:
-        return {"status": "error", "message": f"Room {room_id} does not exist."}
+@app.get("/check_library_hours")
+def check_library_hours(
+    ):
+    payload = {
+        "lid": 2558,
+        "gid": 35511,
+        "eid": 141478,
+        "seat": 0,
+        "seatId": 0,
+        "zone": 0,
+        "start": "2025-10-05",
+        "end": "2025-10-06",
+        "pageIndex": 0,
+        "pageSize": 18
+    }
 
-    if time in available_rooms[room_id]:
-        # simulate booking
-        available_rooms[room_id].remove(time)
-        return {
-            "status": "success",
-            "room_id": room_id,
-            "time": time,
-            "message": f"✅ Study room {room_id} booked for {time}."
-        }
-    else:
-        return {
-            "status": "unavailable",
-            "room_id": room_id,
-            "time": time,
-            "available_slots": available_rooms[room_id],
-            "message": f"❌ Requested slot not available. Choose from available slots."
-        }
+    headers = {
+        "Referer": "https://libcal.rutgers.edu/",
+        "Origin": "https://libcal.rutgers.edu",
+        "Content-Type": "application/x-www-form-urlencoded",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+    }
+
+    LIBCAL_URL = "https://libcal.rutgers.edu/spaces/availability/grid"
+    res = requests.post(LIBCAL_URL, data=payload, headers=headers)
+    return {"status": res.status_code, "response": res.text}
 
 
 @app.get("/order_food")
