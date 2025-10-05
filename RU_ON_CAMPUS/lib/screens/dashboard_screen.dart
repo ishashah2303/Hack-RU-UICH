@@ -5,6 +5,12 @@ import '../widgets/home_button.dart';
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
 
+  void _logout(BuildContext context) {
+    // Clear any stored data here if needed (e.g., SharedPreferences or Firebase signOut)
+    // For now, just navigate back to login
+    Navigator.pushNamedAndRemoveUntil(context, Routes.login, (route) => false);
+  }
+
   @override
   Widget build(BuildContext context) {
     final buttons = [
@@ -41,12 +47,20 @@ class DashboardScreen extends StatelessWidget {
     ];
 
     return Scaffold(
-      appBar: AppBar(title: const Text('RUOnCampus')),
+      appBar: AppBar(
+        title: const Text('RUOnCampus'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: 'Logout',
+            onPressed: () => _logout(context),
+          ),
+        ],
+      ),
       body: LayoutBuilder(
         builder: (context, c) {
           final isWide = c.maxWidth > 700;
           if (isWide) {
-            // 2-column grid for web/large screens
             return GridView.count(
               padding: const EdgeInsets.all(16),
               crossAxisCount: 2,
@@ -54,7 +68,6 @@ class DashboardScreen extends StatelessWidget {
               children: buttons,
             );
           }
-          // list for phones
           return ListView(
             padding: const EdgeInsets.all(8),
             children: buttons,

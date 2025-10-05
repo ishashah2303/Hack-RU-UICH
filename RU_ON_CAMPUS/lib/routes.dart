@@ -1,8 +1,10 @@
 class Routes {
-  static const dashboard = '/';
-  static const studyBuddy = '/study-buddy';
-  static const foodRunner = '/food-runner';
-  static const events = '/events';
-  static const transit = '/transit';
-  static const dailyAutomator = '/daily-automator';
+  static const String login = '/login';
+  static const String register = '/register';
+  static const String dashboard = '/dashboard';
+  static const String studyBuddy = '/studyBuddy';
+  static const String foodRunner = '/foodRunner';
+  static const String events = '/events';
+  static const String transit = '/transit';
+  static const String dailyAutomator = '/dailyAutomator';
 }

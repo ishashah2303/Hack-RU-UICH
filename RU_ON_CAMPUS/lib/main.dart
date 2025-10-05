@@ -7,6 +7,8 @@ import 'screens/food_runner_screen.dart';
 import 'screens/events_screen.dart';
 import 'screens/transit_screen.dart';
 import 'screens/daily_life_automator_screen.dart';
+import 'screens/login_screen.dart';
+import 'screens/register_screen.dart';  
 
 void main() {
   runApp(const RUOnCampusApp());
@@ -21,8 +23,10 @@ class RUOnCampusApp extends StatelessWidget {
       title: 'RUOnCampus',
       theme: buildScarletTheme(),
       debugShowCheckedModeBanner: false,
-      initialRoute: Routes.dashboard,
+      initialRoute: Routes.login,
       routes: {
+        Routes.login: (_) => const LoginScreen(),
+        Routes.register: (_) => const RegisterScreen(),
         Routes.dashboard: (_) => const DashboardScreen(),
         Routes.studyBuddy: (_) => const StudyBuddyScreen(),
         Routes.foodRunner: (_) => const FoodRunnerScreen(),
